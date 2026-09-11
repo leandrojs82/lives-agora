@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from '../auth/googleAuth';
 import type { Filters } from '../api/types';
 import { EMPTY_FILTERS } from '../api/types';
-import { AuthError } from '../api/youtubeClient';
+import { AuthError, QuotaExceededError } from '../api/youtubeClient';
 import { useSubscriptions, QK } from '../hooks/useLives';
 import { getQuotaUsed } from '../lib/quota';
 import { cacheGet, cacheSet, CACHE_KEYS } from '../lib/cache';
@@ -33,10 +33,12 @@ export default function Dashboard({ user, onSignOut }: Props) {
   const [counts, setCounts] = useState<Record<TabKey, number>>({ subscribed: 0, discover: 0 });
   const [quotaUsed, setQuotaUsed] = useState(getQuotaUsed());
   const [reloadingSubs, setReloadingSubs] = useState(false);
+  const [reloadError, setReloadError] = useState<unknown>(null);
   const [remote, setRemote] = useState<{ fn: (() => void) | null; busy: boolean }>({ fn: null, busy: false });
+  const [quotaFlags, setQuotaFlags] = useState<Record<TabKey, boolean>>({ subscribed: false, discover: false });
 
   const subscribedIds = useMemo(() => new Set((subs.data ?? []).map((c) => c.id)), [subs.data]);
-  const isFetching = qc.isFetching() > 0;
+  const isFetching = useIsFetching() > 0;
 
   // Atualiza o badge de cota sempre que algo terminou de buscar.
   useEffect(() => {
@@ -50,7 +52,21 @@ export default function Dashboard({ user, onSignOut }: Props) {
 
   const onCountSubscribed = useCallback((n: number) => setCounts((c) => (c.subscribed === n ? c : { ...c, subscribed: n })), []);
   const onCountDiscover = useCallback((n: number) => setCounts((c) => (c.discover === n ? c : { ...c, discover: n })), []);
+  const onQuotaExceededSubscribed = useCallback(
+    (exceeded: boolean) => setQuotaFlags((f) => (f.subscribed === exceeded ? f : { ...f, subscribed: exceeded })),
+    [],
+  );
+  const onQuotaExceededDiscover = useCallback(
+    (exceeded: boolean) => setQuotaFlags((f) => (f.discover === exceeded ? f : { ...f, discover: exceeded })),
+    [],
+  );
   const onRemoteSearchRef = useCallback((fn: (() => void) | null, busy: boolean) => setRemote({ fn, busy }), []);
+
+  const quotaExceeded =
+    quotaFlags.subscribed ||
+    quotaFlags.discover ||
+    subs.error instanceof QuotaExceededError ||
+    reloadError instanceof QuotaExceededError;
 
   const refresh = () => {
     if (tab === 'subscribed') qc.refetchQueries({ queryKey: QK.subscribed });
@@ -58,9 +74,17 @@ export default function Dashboard({ user, onSignOut }: Props) {
   };
 
   const reloadSubscriptions = async () => {
+    if (quotaExceeded) return;
     setReloadingSubs(true);
     try {
       await subs.reload();
+      setReloadError(null);
+    } catch (e) {
+      if (e instanceof AuthError) {
+        onSignOut();
+      } else {
+        setReloadError(e);
+      }
     } finally {
       setReloadingSubs(false);
       setQuotaUsed(getQuotaUsed());
@@ -70,6 +94,9 @@ export default function Dashboard({ user, onSignOut }: Props) {
   useEffect(() => {
     if (subs.error instanceof AuthError) onSignOut();
   }, [subs.error, onSignOut]);
+
+  const subsBanner = subs.error ? errorToBanner(subs.error) : null;
+  const reloadBanner = reloadError ? errorToBanner(reloadError) : null;
 
   return (
     <div className="min-h-full flex flex-col">
@@ -89,11 +116,12 @@ export default function Dashboard({ user, onSignOut }: Props) {
         showRemoteSearch={tab === 'discover'}
         onRemoteSearch={() => remote.fn?.()}
         remoteSearching={remote.busy}
-        disabled={!subs.data}
+        disabled={!subs.data || quotaExceeded}
       />
 
       <main className="mx-auto max-w-7xl w-full px-4 py-4 flex-1">
-        {subs.error && <Banner kind={errorToBanner(subs.error).kind}>{errorToBanner(subs.error).text}</Banner>}
+        {subsBanner && <Banner kind={subsBanner.kind}>{subsBanner.text}</Banner>}
+        {reloadBanner && <Banner kind={reloadBanner.kind}>{reloadBanner.text}</Banner>}
         {!subs.data && !subs.error && (
           <p className="text-center text-yt-muted py-16">Carregando suas inscrições…</p>
         )}
@@ -105,6 +133,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
                 filters={filters}
                 onCount={onCountSubscribed}
                 onAuthError={onSignOut}
+                onQuotaExceeded={onQuotaExceededSubscribed}
               />
             </div>
             <div hidden={tab !== 'discover'}>
@@ -113,6 +142,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
                 filters={filters}
                 onCount={onCountDiscover}
                 onAuthError={onSignOut}
+                onQuotaExceeded={onQuotaExceededDiscover}
                 onRemoteSearchRef={onRemoteSearchRef}
               />
             </div>

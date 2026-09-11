@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import type { Filters } from '../api/types';
-import { AuthError } from '../api/youtubeClient';
+import { AuthError, QuotaExceededError } from '../api/youtubeClient';
 import { useDiscoverLives } from '../hooks/useLives';
 import { applyFilters } from '../lib/filters';
 import { formatAgo } from '../lib/format';
@@ -13,10 +13,18 @@ interface Props {
   filters: Filters;
   onCount: (n: number) => void;
   onAuthError: () => void;
+  onQuotaExceeded: (exceeded: boolean) => void;
   onRemoteSearchRef: (fn: (() => void) | null, busy: boolean) => void;
 }
 
-export default function DiscoverTab({ subscribedIds, filters, onCount, onAuthError, onRemoteSearchRef }: Props) {
+export default function DiscoverTab({
+  subscribedIds,
+  filters,
+  onCount,
+  onAuthError,
+  onQuotaExceeded,
+  onRemoteSearchRef,
+}: Props) {
   const { query: q, remoteSearch } = useDiscoverLives(subscribedIds);
   const filtered = useMemo(() => applyFilters(q.data ?? [], filters), [q.data, filters]);
 
@@ -32,15 +40,20 @@ export default function DiscoverTab({ subscribedIds, filters, onCount, onAuthErr
   useEffect(() => {
     if (error instanceof AuthError) onAuthError();
   }, [error, onAuthError]);
+  useEffect(() => {
+    onQuotaExceeded(error instanceof QuotaExceededError);
+  }, [error, onQuotaExceeded]);
 
   const hasAny = (q.data?.length ?? 0) > 0;
   const emptyMessage = hasAny
     ? 'Nenhuma live corresponde aos filtros. Tente "Buscar no YouTube".'
     : 'Nenhuma live encontrada. Clique em "Atualizar" ou "Buscar no YouTube".';
 
+  const banner = error ? errorToBanner(error) : null;
+
   return (
     <div className="space-y-3">
-      {error && <Banner kind={errorToBanner(error).kind}>{errorToBanner(error).text}</Banner>}
+      {banner && <Banner kind={banner.kind}>{banner.text}</Banner>}
       {q.dataUpdatedAt > 0 && (
         <p className="text-xs text-yt-muted">
           Lives populares de canais que você não segue · atualizado {formatAgo(q.dataUpdatedAt)}
