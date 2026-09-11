@@ -97,11 +97,10 @@ export default function FilterBar({
           type="button"
           onClick={() => setOpen((o) => !o)}
           className="sm:hidden rounded-md border border-yt-border px-3 py-2 text-sm"
+          aria-expanded={open}
         >
           Filtros
         </button>
-
-        <div className="hidden sm:flex items-center gap-2">{selects}</div>
 
         <button
           type="button"
@@ -125,7 +124,11 @@ export default function FilterBar({
           </button>
         )}
 
-        {open && <div className="sm:hidden w-full flex flex-col gap-2 pt-1">{selects}</div>}
+        <div
+          className={`${open ? 'flex' : 'hidden'} sm:flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 sm:pt-0`}
+        >
+          {selects}
+        </div>
       </div>
     </div>
   );
