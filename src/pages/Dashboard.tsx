@@ -93,15 +93,20 @@ export default function Dashboard({ user, onSignOut }: Props) {
   const refresh = () => {
     const queryKey = tab === 'subscribed' ? QK.subscribed : QK.discover;
     const wasArmed = armed[tab];
-    // Com staleTime infinito, habilitar uma query sem dado em cache dispara a
-    // primeira busca sozinha; se já existe dado em cache, habilitar não busca
-    // nada, então um refetchQueries explícito é necessário.
-    const hasCachedData = qc.getQueryData(queryKey) !== undefined;
 
-    if (!wasArmed) setArmed((a) => ({ ...a, [tab]: true }));
     if (tab === 'discover') remoteSearch.reset();
 
-    if (wasArmed || hasCachedData) qc.refetchQueries({ queryKey });
+    if (!wasArmed) {
+      setArmed((a) => ({ ...a, [tab]: true }));
+      // Neste render a query ainda está desabilitada (o enable só é aplicado
+      // no próximo render), então refetchQueries não faria nada (ele ignora
+      // queries desabilitadas). invalidateQueries marca a query como stale;
+      // quando o flip de enabled acontecer, isStaleByTime já vê a query
+      // stale e dispara a busca sozinha — sem duplicar o request.
+      qc.invalidateQueries({ queryKey });
+    } else {
+      qc.refetchQueries({ queryKey });
+    }
   };
 
   const reloadSubscriptions = async () => {

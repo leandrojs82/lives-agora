@@ -53,10 +53,13 @@ export function initAuth(): Promise<void> {
           p?.reject(new Error(resp.error_description ?? resp.error));
           return;
         }
+        // Se signOut() já rejeitou (ou nunca houve) o pedido pendente, um
+        // token chegando atrasado não deve reviver a sessão encerrada.
+        if (!p) return;
         accessToken = resp.access_token;
         expiresAt = Date.now() + Number(resp.expires_in) * 1000;
         sessionStorage.setItem(SESSION_FLAG, '1');
-        p?.resolve(resp.access_token);
+        p.resolve(resp.access_token);
       },
       error_callback: (err) => {
         const p = pending;
