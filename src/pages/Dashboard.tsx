@@ -4,8 +4,8 @@ import type { AuthUser } from '../auth/googleAuth';
 import type { Filters } from '../api/types';
 import { EMPTY_FILTERS } from '../api/types';
 import { AuthError, QuotaExceededError } from '../api/youtubeClient';
-import { useSubscriptions, QK } from '../hooks/useLives';
-import { getQuotaUsed } from '../lib/quota';
+import { useSubscriptions, useRemoteSearch, QK } from '../hooks/useLives';
+import { getQuotaUsed, pacificDateKey } from '../lib/quota';
 import { cacheGet, cacheSet, CACHE_KEYS } from '../lib/cache';
 import Header from '../components/Header';
 import Tabs, { type TabKey } from '../components/Tabs';
@@ -29,25 +29,38 @@ export default function Dashboard({ user, onSignOut }: Props) {
   const qc = useQueryClient();
   const subs = useSubscriptions();
   const [tab, setTab] = useState<TabKey>(loadTab);
+  const [armed, setArmed] = useState<Record<TabKey, boolean>>(() => ({
+    subscribed: false,
+    discover: loadTab() === 'discover',
+  }));
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [counts, setCounts] = useState<Record<TabKey, number>>({ subscribed: 0, discover: 0 });
   const [quotaUsed, setQuotaUsed] = useState(getQuotaUsed());
   const [reloadingSubs, setReloadingSubs] = useState(false);
   const [reloadError, setReloadError] = useState<unknown>(null);
-  const [remote, setRemote] = useState<{ fn: (() => void) | null; busy: boolean }>({ fn: null, busy: false });
   const [quotaFlags, setQuotaFlags] = useState<Record<TabKey, boolean>>({ subscribed: false, discover: false });
+  const [exceededDay, setExceededDay] = useState<string | null>(null);
+  const [, setTick] = useState(0);
 
   const subscribedIds = useMemo(() => new Set((subs.data ?? []).map((c) => c.id)), [subs.data]);
   const isFetching = useIsFetching() > 0;
+  const remoteSearch = useRemoteSearch(subscribedIds);
+
+  // Reavalia o "há X min" e a virada do dia de cota sem exigir ação do usuário.
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Atualiza o badge de cota sempre que algo terminou de buscar.
   useEffect(() => {
     setQuotaUsed(getQuotaUsed());
-  }, [isFetching, remote.busy, subs.data]);
+  }, [isFetching, remoteSearch.isPending, subs.data]);
 
   const changeTab = (t: TabKey) => {
     setTab(t);
     cacheSet(CACHE_KEYS.activeTab, t);
+    if (t === 'discover') setArmed((a) => (a.discover ? a : { ...a, discover: true }));
   };
 
   const onCountSubscribed = useCallback((n: number) => setCounts((c) => (c.subscribed === n ? c : { ...c, subscribed: n })), []);
@@ -60,17 +73,35 @@ export default function Dashboard({ user, onSignOut }: Props) {
     (exceeded: boolean) => setQuotaFlags((f) => (f.discover === exceeded ? f : { ...f, discover: exceeded })),
     [],
   );
-  const onRemoteSearchRef = useCallback((fn: (() => void) | null, busy: boolean) => setRemote({ fn, busy }), []);
 
-  const quotaExceeded =
+  const rawQuotaExceeded =
     quotaFlags.subscribed ||
     quotaFlags.discover ||
     subs.error instanceof QuotaExceededError ||
     reloadError instanceof QuotaExceededError;
 
+  useEffect(() => {
+    if (rawQuotaExceeded) {
+      setExceededDay((d) => d ?? pacificDateKey());
+    } else {
+      setExceededDay(null);
+    }
+  }, [rawQuotaExceeded]);
+
+  const quotaExceeded = rawQuotaExceeded && exceededDay === pacificDateKey();
+
   const refresh = () => {
-    if (tab === 'subscribed') qc.refetchQueries({ queryKey: QK.subscribed });
-    else qc.refetchQueries({ queryKey: QK.discover });
+    const queryKey = tab === 'subscribed' ? QK.subscribed : QK.discover;
+    const wasArmed = armed[tab];
+    // Com staleTime infinito, habilitar uma query sem dado em cache dispara a
+    // primeira busca sozinha; se já existe dado em cache, habilitar não busca
+    // nada, então um refetchQueries explícito é necessário.
+    const hasCachedData = qc.getQueryData(queryKey) !== undefined;
+
+    if (!wasArmed) setArmed((a) => ({ ...a, [tab]: true }));
+    if (tab === 'discover') remoteSearch.reset();
+
+    if (wasArmed || hasCachedData) qc.refetchQueries({ queryKey });
   };
 
   const reloadSubscriptions = async () => {
@@ -113,9 +144,10 @@ export default function Dashboard({ user, onSignOut }: Props) {
         onChange={setFilters}
         onRefresh={refresh}
         refreshing={isFetching}
+        refreshCostLabel={tab === 'discover' ? '~505 un.' : undefined}
         showRemoteSearch={tab === 'discover'}
-        onRemoteSearch={() => remote.fn?.()}
-        remoteSearching={remote.busy}
+        onRemoteSearch={() => remoteSearch.mutate(filters)}
+        remoteSearching={remoteSearch.isPending}
         disabled={!subs.data || quotaExceeded}
       />
 
@@ -131,6 +163,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
               <SubscribedTab
                 channels={subs.data}
                 filters={filters}
+                armed={armed.subscribed}
                 onCount={onCountSubscribed}
                 onAuthError={onSignOut}
                 onQuotaExceeded={onQuotaExceededSubscribed}
@@ -140,10 +173,11 @@ export default function Dashboard({ user, onSignOut }: Props) {
               <DiscoverTab
                 subscribedIds={subscribedIds}
                 filters={filters}
+                armed={armed.discover}
+                remoteError={remoteSearch.error}
                 onCount={onCountDiscover}
                 onAuthError={onSignOut}
                 onQuotaExceeded={onQuotaExceededDiscover}
-                onRemoteSearchRef={onRemoteSearchRef}
               />
             </div>
           </>

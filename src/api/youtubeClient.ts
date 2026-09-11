@@ -27,7 +27,7 @@ export class YouTubeApiError extends Error {
 
 export interface TokenProvider {
   getToken(): Promise<string>;
-  refreshToken(): Promise<string>;
+  refreshToken(staleToken: string): Promise<string>;
 }
 
 let provider: TokenProvider | null = null;
@@ -56,7 +56,7 @@ export async function ytGet<T>(resource: YtResource, params: Record<string, stri
   addQuota(QUOTA_COST[resource]);
 
   if (res.status === 401) {
-    token = await provider.refreshToken();
+    token = await provider.refreshToken(token);
     res = await doFetch(url, token);
     addQuota(QUOTA_COST[resource]);
   }

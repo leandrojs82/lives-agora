@@ -48,6 +48,7 @@ Netlify funciona igual (build `npm run build`, publish `dist`).
 | Carregar inscrições (500 canais) | 10 |
 | Atualizar aba Inscritos (500 canais) | ~550 |
 | Primeira carga da Descoberta | ~505 |
+| Atualizar aba Descoberta | ~505 |
 | Buscar no YouTube | ~101 |
 
 ## Estrutura

@@ -17,7 +17,7 @@ function json(body: unknown, status = 200): Response {
 
 const fetchMock = vi.fn<typeof fetch>();
 const getToken = vi.fn<() => Promise<string>>();
-const refreshToken = vi.fn<() => Promise<string>>();
+const refreshToken = vi.fn<(staleToken: string) => Promise<string>>();
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
@@ -49,6 +49,7 @@ describe('ytGet', () => {
     const out = await ytGet('videos', {});
     expect(out).toEqual({ ok: 1 });
     expect(refreshToken).toHaveBeenCalledTimes(1);
+    expect(refreshToken).toHaveBeenCalledWith('tok1');
     const [, init2] = fetchMock.mock.calls[1];
     expect((init2!.headers as Record<string, string>).Authorization).toBe('Bearer tok2');
   });

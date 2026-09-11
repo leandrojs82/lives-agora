@@ -7,6 +7,7 @@ interface Props {
   onChange: (f: Filters) => void;
   onRefresh: () => void;
   refreshing: boolean;
+  refreshCostLabel?: string;
   showRemoteSearch: boolean;
   onRemoteSearch?: () => void;
   remoteSearching?: boolean;
@@ -21,6 +22,7 @@ export default function FilterBar({
   onChange,
   onRefresh,
   refreshing,
+  refreshCostLabel,
   showRemoteSearch,
   onRemoteSearch,
   remoteSearching = false,
@@ -109,6 +111,7 @@ export default function FilterBar({
           className="rounded-md bg-yt-surface border border-yt-border px-3 py-2 text-sm hover:bg-yt-border disabled:opacity-50"
         >
           {refreshing ? 'Atualizando…' : 'Atualizar'}
+          {refreshCostLabel && <span className="text-xs opacity-80"> {refreshCostLabel}</span>}
         </button>
 
         {showRemoteSearch && (

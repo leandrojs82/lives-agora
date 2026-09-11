@@ -29,4 +29,16 @@ describe('mapWithConcurrency', () => {
       }),
     ).rejects.toThrow('boom');
   });
+
+  it('para de processar itens restantes após a primeira falha', async () => {
+    const calls: number[] = [];
+    await expect(
+      mapWithConcurrency([1, 2, 3], 1, async (n) => {
+        calls.push(n);
+        if (n === 1) throw new Error('boom');
+        return n;
+      }),
+    ).rejects.toThrow('boom');
+    expect(calls).toEqual([1]);
+  });
 });

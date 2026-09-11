@@ -11,13 +11,14 @@ import { errorToBanner } from './errorBanner';
 interface Props {
   channels: Channel[];
   filters: Filters;
+  armed: boolean;
   onCount: (n: number) => void;
   onAuthError: () => void;
   onQuotaExceeded: (exceeded: boolean) => void;
 }
 
-export default function SubscribedTab({ channels, filters, onCount, onAuthError, onQuotaExceeded }: Props) {
-  const q = useSubscribedLives(channels);
+export default function SubscribedTab({ channels, filters, armed, onCount, onAuthError, onQuotaExceeded }: Props) {
+  const q = useSubscribedLives(channels, armed);
   const filtered = useMemo(() => applyFilters(q.data ?? [], filters), [q.data, filters]);
 
   useEffect(() => onCount(filtered.length), [filtered.length, onCount]);

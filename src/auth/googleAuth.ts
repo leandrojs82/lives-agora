@@ -109,7 +109,8 @@ export async function getValidToken(): Promise<string> {
   return requestToken('');
 }
 
-export async function refreshToken(): Promise<string> {
+export async function refreshToken(staleToken: string): Promise<string> {
+  if (accessToken && accessToken !== staleToken) return accessToken;
   accessToken = null;
   return requestToken('');
 }
@@ -126,6 +127,11 @@ export function signOut(): void {
   accessToken = null;
   expiresAt = 0;
   sessionStorage.removeItem(SESSION_FLAG);
+  if (pending) {
+    pending.reject(new Error('Sessão encerrada'));
+    pending = null;
+    pendingPromise = null;
+  }
   if (t && window.google?.accounts?.oauth2) {
     google.accounts.oauth2.revoke(t, () => {});
   }

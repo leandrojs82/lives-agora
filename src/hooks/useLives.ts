@@ -28,11 +28,11 @@ export function useSubscriptions() {
   return { ...query, reload };
 }
 
-export function useSubscribedLives(channels: Channel[] | undefined) {
+export function useSubscribedLives(channels: Channel[] | undefined, armed: boolean) {
   const cached = cachedLives(CACHE_KEYS.livesSubscribed);
   return useQuery({
     queryKey: QK.subscribed,
-    enabled: !!channels,
+    enabled: !!channels && armed,
     initialData: cached?.value,
     initialDataUpdatedAt: cached?.savedAt,
     queryFn: async () => {
@@ -43,13 +43,12 @@ export function useSubscribedLives(channels: Channel[] | undefined) {
   });
 }
 
-export function useDiscoverLives(subscribedIds: Set<string> | undefined) {
-  const qc = useQueryClient();
+export function useDiscoverLives(subscribedIds: Set<string> | undefined, armed: boolean) {
   const cached = cachedLives(CACHE_KEYS.livesDiscover);
 
-  const query = useQuery({
+  return useQuery({
     queryKey: QK.discover,
-    enabled: !!subscribedIds,
+    enabled: !!subscribedIds && armed,
     initialData: cached?.value,
     initialDataUpdatedAt: cached?.savedAt,
     queryFn: async () => {
@@ -58,14 +57,15 @@ export function useDiscoverLives(subscribedIds: Set<string> | undefined) {
       return lives;
     },
   });
+}
 
-  const remoteSearch = useMutation({
+export function useRemoteSearch(subscribedIds: Set<string> | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
     mutationFn: (filters: Filters) => searchLive(filters, subscribedIds ?? new Set()),
     onSuccess: (lives) => {
       cacheSet(CACHE_KEYS.livesDiscover, lives);
       qc.setQueryData(QK.discover, lives);
     },
   });
-
-  return { query, remoteSearch };
 }

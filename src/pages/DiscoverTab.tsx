@@ -11,32 +11,28 @@ import { errorToBanner } from './errorBanner';
 interface Props {
   subscribedIds: Set<string>;
   filters: Filters;
+  armed: boolean;
+  remoteError: unknown;
   onCount: (n: number) => void;
   onAuthError: () => void;
   onQuotaExceeded: (exceeded: boolean) => void;
-  onRemoteSearchRef: (fn: (() => void) | null, busy: boolean) => void;
 }
 
 export default function DiscoverTab({
   subscribedIds,
   filters,
+  armed,
+  remoteError,
   onCount,
   onAuthError,
   onQuotaExceeded,
-  onRemoteSearchRef,
 }: Props) {
-  const { query: q, remoteSearch } = useDiscoverLives(subscribedIds);
+  const q = useDiscoverLives(subscribedIds, armed);
   const filtered = useMemo(() => applyFilters(q.data ?? [], filters), [q.data, filters]);
 
   useEffect(() => onCount(filtered.length), [filtered.length, onCount]);
 
-  useEffect(() => {
-    onRemoteSearchRef(() => remoteSearch.mutate(filters), remoteSearch.isPending);
-    return () => onRemoteSearchRef(null, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, remoteSearch.isPending]);
-
-  const error = q.error ?? remoteSearch.error;
+  const error = q.error ?? remoteError;
   useEffect(() => {
     if (error instanceof AuthError) onAuthError();
   }, [error, onAuthError]);
@@ -59,7 +55,7 @@ export default function DiscoverTab({
           Lives populares de canais que você não segue · atualizado {formatAgo(q.dataUpdatedAt)}
         </p>
       )}
-      <LiveGrid lives={filtered} loading={q.isFetching || remoteSearch.isPending} emptyMessage={emptyMessage} />
+      <LiveGrid lives={filtered} loading={q.isFetching} emptyMessage={emptyMessage} />
     </div>
   );
 }
