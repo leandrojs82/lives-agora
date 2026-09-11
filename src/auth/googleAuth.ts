@@ -14,54 +14,78 @@ let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 let accessToken: string | null = null;
 let expiresAt = 0;
 let pending: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null;
+let pendingPromise: Promise<string> | null = null;
+let gisLoading: Promise<void> | null = null;
+let initPromise: Promise<void> | null = null;
 
 function loadGis(): Promise<void> {
   if (window.google?.accounts?.oauth2) return Promise.resolve();
-  return new Promise((resolve, reject) => {
+  if (gisLoading) return gisLoading;
+  gisLoading = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = GIS_SRC;
     s.async = true;
     s.defer = true;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Falha ao carregar o Google Identity Services'));
+    s.onerror = () => {
+      gisLoading = null;
+      reject(new Error('Falha ao carregar o Google Identity Services'));
+    };
     document.head.appendChild(s);
   });
+  return gisLoading;
 }
 
-export async function initAuth(): Promise<void> {
-  if (tokenClient) return;
-  if (!GOOGLE_CLIENT_ID) throw new Error('VITE_GOOGLE_CLIENT_ID não configurado');
-  await loadGis();
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: OAUTH_SCOPES,
-    callback: (resp) => {
-      const p = pending;
-      pending = null;
-      if (resp.error) {
-        p?.reject(new Error(resp.error_description ?? resp.error));
-        return;
-      }
-      accessToken = resp.access_token;
-      expiresAt = Date.now() + Number(resp.expires_in) * 1000;
-      sessionStorage.setItem(SESSION_FLAG, '1');
-      p?.resolve(resp.access_token);
-    },
-    error_callback: (err) => {
-      const p = pending;
-      pending = null;
-      p?.reject(new Error(err.message || err.type));
-    },
+export function initAuth(): Promise<void> {
+  if (tokenClient) return Promise.resolve();
+  if (initPromise) return initPromise;
+  if (!GOOGLE_CLIENT_ID) return Promise.reject(new Error('VITE_GOOGLE_CLIENT_ID não configurado'));
+  initPromise = (async () => {
+    await loadGis();
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: OAUTH_SCOPES,
+      callback: (resp) => {
+        const p = pending;
+        pending = null;
+        pendingPromise = null;
+        if (resp.error) {
+          p?.reject(new Error(resp.error_description ?? resp.error));
+          return;
+        }
+        accessToken = resp.access_token;
+        expiresAt = Date.now() + Number(resp.expires_in) * 1000;
+        sessionStorage.setItem(SESSION_FLAG, '1');
+        p?.resolve(resp.access_token);
+      },
+      error_callback: (err) => {
+        const p = pending;
+        pending = null;
+        pendingPromise = null;
+        p?.reject(new Error(err.message || err.type));
+      },
+    });
+  })().catch((err) => {
+    initPromise = null;
+    throw err;
   });
+  return initPromise;
 }
 
 function requestToken(prompt: '' | 'consent' | 'select_account'): Promise<string> {
   if (!tokenClient) return Promise.reject(new Error('Auth não inicializado'));
-  if (pending) return Promise.reject(new Error('Já existe uma solicitação de login em andamento'));
-  return new Promise((resolve, reject) => {
+  if (pendingPromise) return pendingPromise;
+  pendingPromise = new Promise<string>((resolve, reject) => {
     pending = { resolve, reject };
-    tokenClient!.requestAccessToken({ prompt });
+    try {
+      tokenClient!.requestAccessToken({ prompt });
+    } catch (err) {
+      pending = null;
+      pendingPromise = null;
+      reject(err instanceof Error ? err : new Error(String(err)));
+    }
   });
+  return pendingPromise;
 }
 
 /** Login interativo (clique do usuário). */
