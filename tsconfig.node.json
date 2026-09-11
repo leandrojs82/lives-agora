@@ -6,7 +6,10 @@
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": ".tsc-build"
   },
   "include": ["vite.config.ts", "tailwind.config.js", "postcss.config.js"]
 }

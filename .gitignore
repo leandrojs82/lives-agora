@@ -4,3 +4,5 @@ dev-dist
 .env
 .env.local
 .superpowers/
+.tsc-build
+*.tsbuildinfo
