@@ -49,6 +49,8 @@ export function useAuth() {
   const signIn = useCallback(async () => {
     setError(null);
     try {
+      // Garante a inicialização (ou reexibe o erro real, ex.: client id ausente)
+      await initAuth();
       const token = await gisSignIn();
       setUser(await fetchUserInfo(token));
       setStatus('signedIn');
