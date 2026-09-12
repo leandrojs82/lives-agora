@@ -41,7 +41,9 @@ Netlify funciona igual (build `npm run build`, publish `dist`).
 
 ## Cota da YouTube API
 
-10.000 unidades/dia. `search.list` custa 100; os demais 1. O badge no topo mostra a estimativa do dia.
+10.000 unidades/dia. `search.list` custa 100; os demais 1. O badge no topo mostra a estimativa do dia e o nº de buscas.
+
+> **Atenção:** além das unidades, o Google tem um limite **separado** para `search.list` ("Search Queries per day"), que em projetos novos pode ser bem menor que 100/dia. Veja em *APIs e serviços → YouTube Data API v3 → Cotas e limites do sistema* e peça aumento se necessário. Cada carga/atualização da Descoberta consome 8 buscas; um continente no "Buscar no YouTube" consome 2–3.
 
 | Ação | Custo aproximado |
 |---|---|

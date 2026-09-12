@@ -23,6 +23,30 @@ export function getQuotaUsed(now?: Date): number {
   }
 }
 
+/** Contador separado de chamadas search.list (o Google tem um limite próprio para elas). */
+function searchKey(now?: Date): string {
+  return `quota-search:${pacificDateKey(now)}`;
+}
+
+export function getSearchCount(now?: Date): number {
+  try {
+    const n = Number(localStorage.getItem(searchKey(now)) ?? 0);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function addSearchCount(now?: Date): number {
+  const total = getSearchCount(now) + 1;
+  try {
+    localStorage.setItem(searchKey(now), String(total));
+  } catch {
+    // storage indisponível
+  }
+  return total;
+}
+
 export function addQuota(units: number, now?: Date): number {
   const total = getQuotaUsed(now) + units;
   try {

@@ -6,7 +6,7 @@ import { EMPTY_FILTERS } from '../api/types';
 import { AuthError, QuotaExceededError } from '../api/youtubeClient';
 import { useSubscriptions, useRemoteSearch, QK } from '../hooks/useLives';
 import { DISCOVER_INITIAL_COST, remoteSearchCost } from '../lib/categories';
-import { getQuotaUsed, pacificDateKey } from '../lib/quota';
+import { getQuotaUsed, getSearchCount, pacificDateKey } from '../lib/quota';
 import { cacheGet, cacheSet, CACHE_KEYS } from '../lib/cache';
 import Header from '../components/Header';
 import Tabs, { type TabKey } from '../components/Tabs';
@@ -37,6 +37,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [counts, setCounts] = useState<Record<TabKey, number>>({ subscribed: 0, discover: 0 });
   const [quotaUsed, setQuotaUsed] = useState(getQuotaUsed());
+  const [searchCount, setSearchCount] = useState(getSearchCount());
   const [reloadingSubs, setReloadingSubs] = useState(false);
   const [reloadError, setReloadError] = useState<unknown>(null);
   const [quotaFlags, setQuotaFlags] = useState<Record<TabKey, boolean>>({ subscribed: false, discover: false });
@@ -56,6 +57,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
   // Atualiza o badge de cota sempre que algo terminou de buscar.
   useEffect(() => {
     setQuotaUsed(getQuotaUsed());
+    setSearchCount(getSearchCount());
   }, [isFetching, remoteSearch.isPending, subs.data]);
 
   const changeTab = (t: TabKey) => {
@@ -125,6 +127,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
     } finally {
       setReloadingSubs(false);
       setQuotaUsed(getQuotaUsed());
+    setSearchCount(getSearchCount());
     }
   };
 
@@ -140,6 +143,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
       <Header
         user={user}
         quotaUsed={quotaUsed}
+        searchCount={searchCount}
         reloadingSubs={reloadingSubs}
         onReloadSubscriptions={reloadSubscriptions}
         onSignOut={onSignOut}

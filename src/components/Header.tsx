@@ -5,12 +5,20 @@ import QuotaBadge from './QuotaBadge';
 interface Props {
   user: AuthUser;
   quotaUsed: number;
+  searchCount: number;
   reloadingSubs: boolean;
   onReloadSubscriptions: () => void;
   onSignOut: () => void;
 }
 
-export default function Header({ user, quotaUsed, reloadingSubs, onReloadSubscriptions, onSignOut }: Props) {
+export default function Header({
+  user,
+  quotaUsed,
+  searchCount,
+  reloadingSubs,
+  onReloadSubscriptions,
+  onSignOut,
+}: Props) {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-30 bg-yt-bg/95 backdrop-blur border-b border-yt-border">
@@ -18,7 +26,7 @@ export default function Header({ user, quotaUsed, reloadingSubs, onReloadSubscri
         <span className="h-7 w-7 rounded-full bg-yt-red flex items-center justify-center text-xs">▶</span>
         <h1 className="font-semibold text-lg">Lives Agora</h1>
         <div className="ml-auto flex items-center gap-3">
-          <QuotaBadge used={quotaUsed} />
+          <QuotaBadge used={quotaUsed} searches={searchCount} />
           <div className="relative">
             <button
               type="button"

@@ -1,5 +1,5 @@
 import { YT_API_BASE, QUOTA_COST, type YtResource } from '../config';
-import { addQuota } from '../lib/quota';
+import { addQuota, addSearchCount } from '../lib/quota';
 
 export class QuotaExceededError extends Error {
   constructor() {
@@ -43,7 +43,30 @@ function doFetch(url: string, token: string): Promise<Response> {
 }
 
 interface GoogleErrorBody {
-  error?: { errors?: { reason?: string }[]; message?: string };
+  error?: {
+    errors?: { reason?: string }[];
+    details?: { reason?: string }[];
+    status?: string;
+    message?: string;
+  };
+}
+
+const QUOTA_REASONS = new Set([
+  'quotaExceeded',
+  'dailyLimitExceeded',
+  'rateLimitExceeded',
+  'RATE_LIMIT_EXCEEDED',
+]);
+
+/** Cobre o formato legado (errors[].reason) e o novo (status/details) do Google. */
+export function isQuotaError(status: number, body: GoogleErrorBody | null): boolean {
+  if (status !== 403 && status !== 429) return false;
+  const e = body?.error;
+  if (!e) return false;
+  if (e.errors?.some((x) => x.reason && QUOTA_REASONS.has(x.reason))) return true;
+  if (e.details?.some((x) => x.reason && QUOTA_REASONS.has(x.reason))) return true;
+  if (e.status === 'RESOURCE_EXHAUSTED') return true;
+  return /quota exceeded/i.test(e.message ?? '');
 }
 
 export async function ytGet<T>(resource: YtResource, params: Record<string, string>): Promise<T> {
@@ -54,6 +77,7 @@ export async function ytGet<T>(resource: YtResource, params: Record<string, stri
   let token = await provider.getToken();
   let res = await doFetch(url, token);
   addQuota(QUOTA_COST[resource]);
+  if (resource === 'search') addSearchCount();
 
   if (res.status === 401) {
     token = await provider.refreshToken(token);
@@ -66,11 +90,7 @@ export async function ytGet<T>(resource: YtResource, params: Record<string, stri
   if (res.status === 401) throw new AuthError();
 
   const body = (await res.json().catch(() => null)) as GoogleErrorBody | null;
-  const reason = body?.error?.errors?.[0]?.reason;
-
-  if (res.status === 403 && (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded')) {
-    throw new QuotaExceededError();
-  }
+  if (isQuotaError(res.status, body)) throw new QuotaExceededError();
 
   throw new YouTubeApiError(res.status, body?.error?.message);
 }

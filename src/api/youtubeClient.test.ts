@@ -66,6 +66,29 @@ describe('ytGet', () => {
     await expect(ytGet('videos', {})).rejects.toBeInstanceOf(QuotaExceededError);
   });
 
+  it('403 no formato novo (RESOURCE_EXHAUSTED / mensagem "Quota exceeded") vira QuotaExceededError', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json(
+        {
+          error: {
+            code: 403,
+            status: 'RESOURCE_EXHAUSTED',
+            message:
+              "Quota exceeded for quota metric 'Search Queries' and limit 'Search Queries per day' of service 'youtube.googleapis.com'",
+            details: [{ reason: 'RATE_LIMIT_EXCEEDED' }],
+          },
+        },
+        403,
+      ),
+    );
+    await expect(ytGet('search', {})).rejects.toBeInstanceOf(QuotaExceededError);
+  });
+
+  it('429 com mensagem de cota vira QuotaExceededError', async () => {
+    fetchMock.mockResolvedValueOnce(json({ error: { message: 'Quota exceeded for ...' } }, 429));
+    await expect(ytGet('search', {})).rejects.toBeInstanceOf(QuotaExceededError);
+  });
+
   it('403 por outro motivo vira YouTubeApiError', async () => {
     fetchMock.mockResolvedValueOnce(json({ error: { errors: [{ reason: 'forbidden' }] } }, 403));
     await expect(ytGet('videos', {})).rejects.toBeInstanceOf(YouTubeApiError);
