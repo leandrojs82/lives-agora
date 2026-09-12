@@ -5,6 +5,7 @@ import type { Filters } from '../api/types';
 import { EMPTY_FILTERS } from '../api/types';
 import { AuthError, QuotaExceededError } from '../api/youtubeClient';
 import { useSubscriptions, useRemoteSearch, QK } from '../hooks/useLives';
+import { DISCOVER_INITIAL_COST } from '../lib/categories';
 import { getQuotaUsed, pacificDateKey } from '../lib/quota';
 import { cacheGet, cacheSet, CACHE_KEYS } from '../lib/cache';
 import Header from '../components/Header';
@@ -149,7 +150,7 @@ export default function Dashboard({ user, onSignOut }: Props) {
         onChange={setFilters}
         onRefresh={refresh}
         refreshing={isFetching}
-        refreshCostLabel={tab === 'discover' ? '~505 un.' : undefined}
+        refreshCostLabel={tab === 'discover' ? `~${DISCOVER_INITIAL_COST} un.` : undefined}
         showRemoteSearch={tab === 'discover'}
         onRemoteSearch={() => remoteSearch.mutate(filters)}
         remoteSearching={remoteSearch.isPending}

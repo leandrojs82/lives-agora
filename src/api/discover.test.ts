@@ -47,21 +47,32 @@ describe('buildSearchParams', () => {
 });
 
 describe('fetchDiscoverInitial', () => {
-  it('busca 5 categorias, junta ids e remove inscritos', async () => {
+  it('busca categorias × alvos regionais (BR/pt, US/en), junta ids e remove inscritos', async () => {
     ytGetMock.mockImplementation(async (_r, params) => {
       const p = params as Record<string, string>;
-      return { items: [{ id: { videoId: `v-${p.videoCategoryId}` } }] };
+      return { items: [{ id: { videoId: `v-${p.regionCode}-${p.videoCategoryId}` } }] };
     });
-    fetchLiveVideosMock.mockResolvedValue([live('v-20', 'UCsub', true), live('v-10', 'UCx', false)]);
+    fetchLiveVideosMock.mockResolvedValue([
+      live('v-BR-20', 'UCsub', true),
+      live('v-BR-10', 'UCx', false),
+    ]);
 
     const out = await fetchDiscoverInitial(new Set(['UCsub']));
 
-    expect(ytGetMock).toHaveBeenCalledTimes(5);
-    expect(ytGetMock.mock.calls.map((c) => (c[1] as Record<string, string>).videoCategoryId)).toEqual(
-      ['20', '10', '25', '17', '24'],
-    );
-    expect(fetchLiveVideosMock.mock.calls[0][0]).toEqual(['v-20', 'v-10', 'v-25', 'v-17', 'v-24']);
-    expect(out.map((l) => l.videoId)).toEqual(['v-10']);
+    expect(ytGetMock).toHaveBeenCalledTimes(6);
+    const calls = ytGetMock.mock.calls.map((c) => c[1] as Record<string, string>);
+    expect(calls.map((p) => [p.regionCode, p.relevanceLanguage, p.videoCategoryId])).toEqual([
+      ['BR', 'pt', '20'],
+      ['BR', 'pt', '10'],
+      ['BR', 'pt', '25'],
+      ['US', 'en', '20'],
+      ['US', 'en', '10'],
+      ['US', 'en', '25'],
+    ]);
+    expect(fetchLiveVideosMock.mock.calls[0][0]).toEqual([
+      'v-BR-20', 'v-BR-10', 'v-BR-25', 'v-US-20', 'v-US-10', 'v-US-25',
+    ]);
+    expect(out.map((l) => l.videoId)).toEqual(['v-BR-10']);
   });
 });
 

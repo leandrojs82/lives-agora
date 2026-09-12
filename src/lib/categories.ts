@@ -9,8 +9,21 @@ export const CATEGORIES: { id: string; name: string }[] = [
   { id: '22', name: 'Pessoas e Blogs' },
 ];
 
-/** Categorias consultadas na carga inicial da aba Descoberta (100 un. cada). */
-export const DISCOVER_CATEGORY_IDS = ['20', '10', '25', '17', '24'];
+/** Categorias consultadas na carga inicial da aba Descoberta (100 un. por consulta). */
+export const DISCOVER_CATEGORY_IDS = ['20', '10', '25'];
+
+/**
+ * Alvos regionais da carga inicial. `regionCode` sozinho não filtra origem
+ * (só o que é visível na região), por isso combina com `relevanceLanguage`.
+ */
+export const DISCOVER_TARGETS: { region: string; language: string }[] = [
+  { region: 'BR', language: 'pt' },
+  { region: 'US', language: 'en' },
+];
+
+/** Custo estimado (unidades) da carga inicial / Atualizar da Descoberta. */
+export const DISCOVER_INITIAL_COST =
+  DISCOVER_TARGETS.length * DISCOVER_CATEGORY_IDS.length * 100 + 1;
 
 export const LANGUAGES: { code: string; name: string }[] = [
   { code: 'pt', name: 'Português' },

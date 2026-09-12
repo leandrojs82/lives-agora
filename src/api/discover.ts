@@ -2,7 +2,7 @@ import { ytGet } from './youtubeClient';
 import { fetchLiveVideos } from './videos';
 import type { Filters, LiveStream } from './types';
 import { EMPTY_FILTERS } from './types';
-import { DISCOVER_CATEGORY_IDS } from '../lib/categories';
+import { DISCOVER_CATEGORY_IDS, DISCOVER_TARGETS } from '../lib/categories';
 
 interface SearchResponse {
   items?: { id: { videoId?: string } }[];
@@ -29,11 +29,17 @@ async function searchVideoIds(params: Record<string, string>): Promise<string[]>
   return (data.items ?? []).map((i) => i.id.videoId).filter((id): id is string => !!id);
 }
 
-/** Carga inicial da aba Descoberta: 5 categorias populares (500 un.). */
+/** Carga inicial da aba Descoberta: categorias × alvos regionais (100 un. por consulta). */
 export async function fetchDiscoverInitial(subscribedIds: Set<string>): Promise<LiveStream[]> {
   const ids: string[] = [];
-  for (const categoryId of DISCOVER_CATEGORY_IDS) {
-    ids.push(...(await searchVideoIds(buildSearchParams({ ...EMPTY_FILTERS, categoryId }))));
+  for (const { region, language } of DISCOVER_TARGETS) {
+    for (const categoryId of DISCOVER_CATEGORY_IDS) {
+      ids.push(
+        ...(await searchVideoIds(
+          buildSearchParams({ ...EMPTY_FILTERS, categoryId, region, language }),
+        )),
+      );
+    }
   }
   const lives = await fetchLiveVideos(ids, subscribedIds);
   return lives.filter((l) => !l.isSubscribed);
