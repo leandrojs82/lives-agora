@@ -52,12 +52,43 @@ export const REGIONS: { code: string; name: string }[] = [
   { code: 'ES', name: 'Espanha' },
   { code: 'MX', name: 'México' },
   { code: 'AR', name: 'Argentina' },
+  { code: 'CA', name: 'Canadá' },
   { code: 'GB', name: 'Reino Unido' },
-  { code: 'JP', name: 'Japão' },
-  { code: 'KR', name: 'Coreia do Sul' },
   { code: 'FR', name: 'França' },
   { code: 'DE', name: 'Alemanha' },
+  { code: 'IT', name: 'Itália' },
+  { code: 'JP', name: 'Japão' },
+  { code: 'KR', name: 'Coreia do Sul' },
+  { code: 'IN', name: 'Índia' },
+  { code: 'AU', name: 'Austrália' },
 ];
+
+/**
+ * Continentes: a API só aceita um `regionCode` por busca, então cada
+ * continente vira uma busca por país representativo (100 un. cada).
+ * O valor no filtro usa o prefixo `continent:` para não colidir com países.
+ */
+export const CONTINENTS: { code: string; name: string; countries: string[] }[] = [
+  { code: 'continent:SA', name: 'América do Sul', countries: ['BR', 'AR', 'CO'] },
+  { code: 'continent:NA', name: 'América do Norte', countries: ['US', 'MX', 'CA'] },
+  { code: 'continent:EU', name: 'Europa', countries: ['GB', 'DE', 'FR'] },
+  { code: 'continent:AS', name: 'Ásia', countries: ['JP', 'KR', 'IN'] },
+  { code: 'continent:AF', name: 'África', countries: ['ZA', 'NG', 'EG'] },
+  { code: 'continent:OC', name: 'Oceania', countries: ['AU', 'NZ'] },
+];
+
+const continentMap = new Map(CONTINENTS.map((c) => [c.code, c.countries]));
+
+/** Países consultados para um valor do filtro de região ([] = sem região). */
+export function regionCodesFor(region: string | null): string[] {
+  if (!region) return [];
+  return continentMap.get(region) ?? [region];
+}
+
+/** Custo estimado (unidades) de "Buscar no YouTube" com o filtro de região dado. */
+export function remoteSearchCost(region: string | null): number {
+  return Math.max(1, regionCodesFor(region).length) * 100 + 1;
+}
 
 const categoryMap = new Map(CATEGORIES.map((c) => [c.id, c.name]));
 const languageMap = new Map(LANGUAGES.map((l) => [l.code, l.name]));

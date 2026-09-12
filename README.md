@@ -49,7 +49,8 @@ Netlify funciona igual (build `npm run build`, publish `dist`).
 | Atualizar aba Inscritos (500 canais) | ~550 |
 | Primeira carga da Descoberta (BR/pt e US/en × 3 categorias + global × 2) | ~801 |
 | Atualizar aba Descoberta | ~801 |
-| Buscar no YouTube | ~101 |
+| Buscar no YouTube (país ou sem região) | ~101 |
+| Buscar no YouTube (continente = 2–3 países) | ~201–301 |
 
 ## Estrutura
 

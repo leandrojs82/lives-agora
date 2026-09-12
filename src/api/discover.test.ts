@@ -90,4 +90,22 @@ describe('searchLive', () => {
     expect(ytGetMock.mock.calls[0][1]).toEqual({ ...base, q: 'lofi', regionCode: 'JP' });
     expect(out.map((l) => l.videoId)).toEqual(['b']);
   });
+
+  it('continente vira uma busca por país representativo', async () => {
+    ytGetMock.mockImplementation(async (_r, params) => {
+      const p = params as Record<string, string>;
+      return { items: [{ id: { videoId: `v-${p.regionCode}` } }] };
+    });
+    fetchLiveVideosMock.mockResolvedValue([]);
+
+    await searchLive({ ...EMPTY_FILTERS, region: 'continent:SA' }, new Set());
+
+    const codes = ytGetMock.mock.calls.map((c) => (c[1] as Record<string, string>).regionCode);
+    expect(codes).toEqual(['BR', 'AR', 'CO']);
+    expect(fetchLiveVideosMock.mock.calls[0][0]).toEqual(['v-BR', 'v-AR', 'v-CO']);
+  });
+
+  it('buildSearchParams ignora valor de continente', () => {
+    expect(buildSearchParams({ ...EMPTY_FILTERS, region: 'continent:EU' }).regionCode).toBeUndefined();
+  });
 });

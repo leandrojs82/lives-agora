@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Filters } from '../api/types';
-import { CATEGORIES, LANGUAGES, REGIONS } from '../lib/categories';
+import { CATEGORIES, CONTINENTS, LANGUAGES, REGIONS } from '../lib/categories';
 
 interface Props {
   filters: Filters;
@@ -11,6 +11,8 @@ interface Props {
   showRemoteSearch: boolean;
   onRemoteSearch?: () => void;
   remoteSearching?: boolean;
+  /** Custo estimado do botão "Buscar no YouTube" (ex.: "100 un."). */
+  remoteCostLabel?: string;
   disabled?: boolean;
 }
 
@@ -26,6 +28,7 @@ export default function FilterBar({
   showRemoteSearch,
   onRemoteSearch,
   remoteSearching = false,
+  remoteCostLabel = '100 un.',
   disabled = false,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -74,11 +77,20 @@ export default function FilterBar({
         aria-label="Região"
       >
         <option value="">Todas as regiões</option>
-        {REGIONS.map((r) => (
-          <option key={r.code} value={r.code}>
-            {r.name}
-          </option>
-        ))}
+        <optgroup label="Continentes (1 busca por país)">
+          {CONTINENTS.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name} ({c.countries.join(', ')})
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Países">
+          {REGIONS.map((r) => (
+            <option key={r.code} value={r.code}>
+              {r.name}
+            </option>
+          ))}
+        </optgroup>
       </select>
     </>
   );
@@ -120,10 +132,10 @@ export default function FilterBar({
             onClick={onRemoteSearch}
             disabled={remoteSearching || disabled}
             className="rounded-md bg-yt-red px-3 py-2 text-sm font-medium hover:bg-red-600 disabled:opacity-50"
-            title="Faz uma busca na API do YouTube com os filtros atuais (custa 100 unidades de cota)"
+            title={`Faz uma busca na API do YouTube com os filtros atuais (custa ~${remoteCostLabel} de cota)`}
           >
             {remoteSearching ? 'Buscando…' : 'Buscar no YouTube'}{' '}
-            <span className="text-xs opacity-80">100 un.</span>
+            <span className="text-xs opacity-80">{remoteCostLabel}</span>
           </button>
         )}
 

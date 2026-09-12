@@ -2,7 +2,7 @@ import { ytGet } from './youtubeClient';
 import { fetchLiveVideos } from './videos';
 import type { Filters, LiveStream } from './types';
 import { EMPTY_FILTERS } from './types';
-import { DISCOVER_TARGETS } from '../lib/categories';
+import { DISCOVER_TARGETS, regionCodesFor } from '../lib/categories';
 
 interface SearchResponse {
   items?: { id: { videoId?: string } }[];
@@ -19,7 +19,8 @@ export function buildSearchParams(f: Filters): Record<string, string> {
   const q = f.query.trim();
   if (q) p.q = q;
   if (f.categoryId) p.videoCategoryId = f.categoryId;
-  if (f.region) p.regionCode = f.region;
+  // Continentes ("continent:XX") são expandidos em searchLive; aqui só país.
+  if (f.region && /^[A-Z]{2}$/.test(f.region)) p.regionCode = f.region;
   if (f.language) p.relevanceLanguage = f.language;
   return p;
 }
@@ -45,9 +46,17 @@ export async function fetchDiscoverInitial(subscribedIds: Set<string>): Promise<
   return lives.filter((l) => !l.isSubscribed);
 }
 
-/** Botão "Buscar no YouTube": uma search.list (100 un.) com os filtros atuais. */
+/**
+ * Botão "Buscar no YouTube": uma search.list (100 un.) por país do filtro de
+ * região (um continente vira vários países); sem região, uma única busca.
+ */
 export async function searchLive(f: Filters, subscribedIds: Set<string>): Promise<LiveStream[]> {
-  const ids = await searchVideoIds(buildSearchParams(f));
+  const codes = regionCodesFor(f.region);
+  const regions: (string | null)[] = codes.length ? codes : [null];
+  const ids: string[] = [];
+  for (const region of regions) {
+    ids.push(...(await searchVideoIds(buildSearchParams({ ...f, region }))));
+  }
   const lives = await fetchLiveVideos(ids, subscribedIds);
   return lives.filter((l) => !l.isSubscribed);
 }
