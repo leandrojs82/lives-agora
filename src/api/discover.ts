@@ -2,7 +2,7 @@ import { ytGet } from './youtubeClient';
 import { fetchLiveVideos } from './videos';
 import type { Filters, LiveStream } from './types';
 import { EMPTY_FILTERS } from './types';
-import { DISCOVER_CATEGORY_IDS, DISCOVER_TARGETS } from '../lib/categories';
+import { DISCOVER_TARGETS } from '../lib/categories';
 
 interface SearchResponse {
   items?: { id: { videoId?: string } }[];
@@ -32,8 +32,8 @@ async function searchVideoIds(params: Record<string, string>): Promise<string[]>
 /** Carga inicial da aba Descoberta: categorias × alvos regionais (100 un. por consulta). */
 export async function fetchDiscoverInitial(subscribedIds: Set<string>): Promise<LiveStream[]> {
   const ids: string[] = [];
-  for (const { region, language } of DISCOVER_TARGETS) {
-    for (const categoryId of DISCOVER_CATEGORY_IDS) {
+  for (const { region, language, categoryIds } of DISCOVER_TARGETS) {
+    for (const categoryId of categoryIds) {
       ids.push(
         ...(await searchVideoIds(
           buildSearchParams({ ...EMPTY_FILTERS, categoryId, region, language }),

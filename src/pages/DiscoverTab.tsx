@@ -28,7 +28,10 @@ export default function DiscoverTab({
   onQuotaExceeded,
 }: Props) {
   const q = useDiscoverLives(subscribedIds, armed);
-  const filtered = useMemo(() => applyFilters(q.data ?? [], filters), [q.data, filters]);
+  const filtered = useMemo(
+    () => applyFilters(q.data ?? [], filters, { preferWestern: true }),
+    [q.data, filters],
+  );
 
   useEffect(() => onCount(filtered.length), [filtered.length, onCount]);
 

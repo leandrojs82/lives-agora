@@ -68,6 +68,19 @@ describe('sortStreams', () => {
   });
 });
 
+describe('sortStreams preferWestern', () => {
+  it('ocidentais primeiro, depois sem idioma, depois demais; viewers dentro do grupo', () => {
+    const hi = live({ videoId: 'hi', language: 'hi', viewers: 90_000 });
+    const none = live({ videoId: 'none', language: undefined, viewers: 50_000 });
+    const en = live({ videoId: 'en', language: 'en', viewers: 100 });
+    const ptbr = live({ videoId: 'ptbr', language: 'pt-BR', viewers: 500 });
+    const out = sortStreams([hi, none, en, ptbr], { preferWestern: true });
+    expect(out.map((s) => s.videoId)).toEqual(['ptbr', 'en', 'none', 'hi']);
+    // sem a opção, continua puramente por viewers
+    expect(sortStreams([hi, none, en, ptbr]).map((s) => s.videoId)).toEqual(['hi', 'none', 'ptbr', 'en']);
+  });
+});
+
 describe('applyFilters', () => {
   it('filtra e ordena', () => {
     const list = [

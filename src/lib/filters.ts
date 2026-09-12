@@ -1,4 +1,5 @@
 import type { LiveStream, Filters } from '../api/types';
+import { WESTERN_LANGUAGES } from './categories';
 
 export function normalizeText(s: string): string {
   return s
@@ -24,8 +25,25 @@ export function matchesFilters(s: LiveStream, f: Filters): boolean {
   return true;
 }
 
-export function sortStreams(list: LiveStream[]): LiveStream[] {
+/** 0 = idioma ocidental, 1 = idioma desconhecido, 2 = demais. */
+function westernRank(s: LiveStream): number {
+  if (!s.language) return 1;
+  const base = s.language.toLowerCase().split('-')[0];
+  return WESTERN_LANGUAGES.includes(base) ? 0 : 2;
+}
+
+export interface SortOptions {
+  /** Ordena idiomas ocidentais primeiro (sem remover os demais). */
+  preferWestern?: boolean;
+}
+
+export function sortStreams(list: LiveStream[], opts: SortOptions = {}): LiveStream[] {
   return [...list].sort((a, b) => {
+    if (opts.preferWestern) {
+      const ra = westernRank(a);
+      const rb = westernRank(b);
+      if (ra !== rb) return ra - rb;
+    }
     const va = a.viewers ?? -1;
     const vb = b.viewers ?? -1;
     if (vb !== va) return vb - va;
@@ -33,6 +51,10 @@ export function sortStreams(list: LiveStream[]): LiveStream[] {
   });
 }
 
-export function applyFilters(list: LiveStream[], f: Filters): LiveStream[] {
-  return sortStreams(list.filter((s) => matchesFilters(s, f)));
+export function applyFilters(
+  list: LiveStream[],
+  f: Filters,
+  opts: SortOptions = {},
+): LiveStream[] {
+  return sortStreams(list.filter((s) => matchesFilters(s, f)), opts);
 }
