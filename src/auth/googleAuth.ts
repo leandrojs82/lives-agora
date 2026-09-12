@@ -7,6 +7,9 @@ export interface AuthUser {
 }
 
 const SESSION_FLAG = 'yt-live:hasSession';
+const YOUTUBE_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
+export const SCOPE_MISSING_MESSAGE =
+  'Permissão do YouTube não concedida. Na tela do Google, marque a opção de acesso ao YouTube e continue.';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 
@@ -17,6 +20,8 @@ let pending: { resolve: (t: string) => void; reject: (e: Error) => void } | null
 let pendingPromise: Promise<string> | null = null;
 let gisLoading: Promise<void> | null = null;
 let initPromise: Promise<void> | null = null;
+/** Última tentativa veio sem o escopo do YouTube: o próximo login força a tela de consentimento. */
+let needsConsent = false;
 
 function loadGis(): Promise<void> {
   if (window.google?.accounts?.oauth2) return Promise.resolve();
@@ -56,6 +61,14 @@ export function initAuth(): Promise<void> {
         // Se signOut() já rejeitou (ou nunca houve) o pedido pendente, um
         // token chegando atrasado não deve reviver a sessão encerrada.
         if (!p) return;
+        // Consentimento granular: o usuário pode ter desmarcado o YouTube.
+        if (!google.accounts.oauth2.hasGrantedAllScopes(resp, YOUTUBE_SCOPE)) {
+          needsConsent = true;
+          google.accounts.oauth2.revoke(resp.access_token, () => {});
+          p.reject(new Error(SCOPE_MISSING_MESSAGE));
+          return;
+        }
+        needsConsent = false;
         accessToken = resp.access_token;
         expiresAt = Date.now() + Number(resp.expires_in) * 1000;
         sessionStorage.setItem(SESSION_FLAG, '1');
@@ -93,7 +106,7 @@ function requestToken(prompt: '' | 'consent' | 'select_account'): Promise<string
 
 /** Login interativo (clique do usuário). */
 export function signIn(): Promise<string> {
-  return requestToken('');
+  return requestToken(needsConsent ? 'consent' : '');
 }
 
 /** Tenta renovar sem interação ao recarregar a página. */
